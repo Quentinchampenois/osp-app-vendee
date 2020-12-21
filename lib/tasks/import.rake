@@ -40,6 +40,63 @@ namespace :import do
 
     Rails.logger.close
   end
+
+  desc "Usage: rake import:geojson FILE='<filename.geojson>' ORG=<organization_id> [VERBOSE=true]"
+  task geojson: :environment do
+    @verbose = ENV["VERBOSE"].to_s == "true"
+    Rails.logger = if @verbose
+                     Logger.new(STDOUT)
+                   else
+                     Logger.new("log/import-geojson-#{Time.zone.now.strftime "%Y-%m-%d-%H:%M:%S"}.log")
+                   end
+
+    display_help unless ENV["FILE"]
+    @file = ENV["FILE"]
+
+    validate_file(".geojson")
+
+    data = JSON.parse(File.read(@file))
+
+    data["features"].each_with_index do |raw, idx|
+      Decidim::Scope.create!(
+        name: { "en" => raw["properties"]["nom_comm"], "fr" => raw["properties"]["nom_comm"] },
+        code: "FR-#{idx}",
+        scope_type: Decidim::ScopeType.where("name ->> 'en'= ?", "municipality").first,
+        organization: Decidim::Organization.first,
+        parent: nil,
+        geojson: {
+          color: "#157173",
+          geometry: {
+            "type": "Feature",
+            "properties": raw["properties"],
+            "formattedProperties": raw["properties"],
+            "geometry": raw["geometry"]
+          },
+          parsed_geometry: {
+            "type": "Feature",
+            "properties": raw["properties"],
+            "formattedProperties": raw["properties"],
+            "geometry": raw["geometry"]
+          }
+        }
+      )
+    end
+
+    # data["features"][0].keys
+    # Count : 1238
+    # => "type" : String
+    # "geometry" : Hash
+    #   - type : String
+    #   - coordinates : String
+    # "properties" : Hash
+    #   - st_length_shape : String
+    #   - insee_comm : String
+    #   - geo_point_2d : String
+    #   - nom_comm : String
+    #   - st_area_shape : String
+    #   - epci : String
+    #   - insee_dep : String
+  end
 end
 
 private
@@ -87,14 +144,17 @@ def validate_process
   end
 end
 
-def validate_file
+def validate_file(extension = ".csv")
   unless File.exist?(@file)
     puts "File does not exist, be sure to pass a full path."
     exit 1
   end
 
-  if File.extname(@file) != ".csv"
+  if extension == ".csv" && File.extname(@file) != ".csv"
     puts "You must pass a CSV file"
+    exit 1
+  elsif extension == ".geojson" && File.extname(@file) != ".geojson"
+    puts "You must pass a GEOJSON file"
     exit 1
   end
 end
@@ -102,7 +162,11 @@ end
 def display_help
   puts <<~HEREDOC
     Help:
+    : Import users :
     Usage: rake import:user FILE='<filename.csv>' ORG=<organization_id> ADMIN=<admin_id> PROCESS=<process_id>
+
+    : Import Geojson :
+    Usage: rake import:geojson FILE='<filename.geojson>' ORG=<organization_id>
   HEREDOC
   exit 0
 end
