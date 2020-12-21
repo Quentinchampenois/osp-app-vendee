@@ -65,7 +65,7 @@ namespace :import do
         organization: Decidim::Organization.first,
         parent: nil,
         geojson: {
-          color: "#55ff22",
+          color: "#157173",
           geometry: {
             "type": "Feature",
             "properties": raw["properties"],
