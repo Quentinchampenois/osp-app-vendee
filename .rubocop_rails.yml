@@ -52,10 +52,9 @@ Rails/Output:
   Include:
     - app/**/*.rb
     - config/**/*.rb
-    - db/**/*.rb
     - lib/**/*.rb
   Exclude:
-    - db/seeds.rb
+    - db/**/*.rb
     - lib/decidim/core.rb
     - lib/decidim/component_manifest.rb
     - lib/decidim/participatory_space_manifest.rb
